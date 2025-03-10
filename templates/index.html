@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Resume Screening</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Animate.css for animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">Smart Resume Screening</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#resumes">Resumes</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="bg-light py-5">
+        <div class="container">
+            <div class="text-center mb-4 animate__animated animate__fadeIn">
+                <h1 class="display-4" style="color: #0056b3;">AI-Powered Resume Screening</h1>
+                <p class="lead" style="font-size: 1.2rem;">Upload job descriptions and resumes to find the best candidates instantly.</p>
+            </div>
+            <div class="card shadow animate__animated animate__fadeInUp" style="border-radius: 8px;">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Job Description Input</h2>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="job_description" class="form-label">Enter Job Description:</label>
+                            <textarea class="form-control" name="job_description" rows="5" placeholder="Paste the job description here..." required></textarea>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Job Details Section -->
+    <section id="dashboard" class="py-5">
+        <div class="container">
+            {% if job_description %}
+            <div class="card shadow mb-4 animate__animated animate__fadeIn">
+                <div class="card-body">
+                    <h3 class="card-title">Job Title:</h3>
+                    <p class="card-text">{{ job_title }}</p>
+                    <h3 class="card-title">Job Details:</h3>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>Experience Required:</strong> {{ job_experience }}</li>
+                        <li class="list-group-item"><strong>Location:</strong> {{ job_location }}</li>
+                        <li class="list-group-item"><strong>Salary Range:</strong> {{ job_salary }}</li>
+                    </ul>
+                    <h3 class="card-title mt-3">Extracted Skills:</h3>
+                    <form method="POST" action="/update-weights">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Skill</th>
+                                    <th>Weight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for skill in job_skills %}
+                                <tr>
+                                    <td>{{ skill }}</td>
+                                    <td>
+                                        <input type="number" class="form-control" name="weight_{{ skill }}" value="{{ skill_weights.get(skill, 1) }}" min="1" step="1">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="submit" class="btn btn-secondary">Update Weights</button>
+                    </form>
+                    <button onclick="showResumeUpload()" class="btn btn-success mt-3">Screen Resume</button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Resume Upload Section -->
+    <section id="resumes" class="py-5 bg-light">
+        <div class="container">
+            <div id="resume-section" class="hidden card shadow mb-4 animate__animated animate__fadeIn">
+                <div class="card-body">
+                    <h2 class="card-title">Upload Resume</h2>
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" name="resume_pdf" accept=".pdf" multiple required>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">Submit Resume</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="d-none text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Analytics -->
+            {% if screened_resumes %}
+            <div class="card shadow mb-4 animate__animated animate__fadeIn">
+                <div class="card-body">
+                    <h2 class="card-title">Dashboard Analytics</h2>
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title">Total Resumes</h5>
+                                    <p class="card-text display-4">{{ statistics.total_resumes }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title">Suitable</h5>
+                                    <p class="card-text display-4">{{ statistics.suitable_percentage }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title">Unsuitable</h5>
+                                    <p class="card-text display-4">{{ statistics.unsuitable_percentage }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title">Avg Match</h5>
+                                    <p class="card-text display-4">{{ statistics.average_match_score }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h5 class="card-title">Top Skills Lacking:</h5>
+                    <ul class="list-group">
+                        {% for skill, count in statistics.top_skills_lacking %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ skill }}
+                            <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Resumes Table -->
+            <div class="card shadow mb-4 animate__animated animate__fadeIn">
+                <div class="card-body">
+                    <h2 class="card-title">Previously Screened Resumes</h2>
+                    <div class="mb-3">
+                        <label for="filter" class="form-label">Filter by Suitability:</label>
+                        <select id="filter" class="form-select" onchange="filterTable()">
+                            <option value="all">All</option>
+                            <option value="Yes">Suitable</option>
+                            <option value="No">Unsuitable</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <button onclick="downloadReport()" class="btn btn-secondary">Download Report</button>
+                        <button onclick="clearResumes()" class="btn btn-danger">Clear All Resumes</button>
+                        <button onclick="analyzeSentiment()" class="btn btn-info">Analyze Sentiment</button>
+                        <button onclick="document.getElementById('filter').value = 'all'; filterTable();" class="btn btn-warning">Reset Filters</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Sl No</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Experience</th>
+                                    <th>Experience Met</th>
+                                    <th>Skills</th>
+                                    <th>Match Score</th>
+                                    <th>Suitable</th>
+                                    <th>Sentiment</th>
+                                    <th>Sentiment Score</th>
+                                    <th>Plagiarism</th>
+                                    <th>Institution Check</th>
+                                    <th>Experience Gap</th>
+                                    <th>Fraud/Not</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for res in screened_resumes %}
+                                <tr>
+                                    <td>{{ res.slno }}</td>
+                                    <td>{{ res.name }}</td>
+                                    <td>{{ res.email }}</td>
+                                    <td>{{ res.phone }}</td>
+                                    <td>{{ res.candidate_experience_years }} Years</td>
+                                    <td>{{ res.experience_met }}</td>
+                                    <td><ul>{% for skill in res.skills %}<li>{{ skill }}</li>{% endfor %}</ul></td>
+                                    <td>{{ res.match_score }}%</td>
+                                    <td>{{ res.suitable }}</td>
+                                    <td>{{ res.sentiment }}</td>
+                                    <td>{{ res.sentiment_score }}%</td>
+                                    <td>{{ res.plagiarism }}</td>
+                                    <td>{{ res.institution_check }}</td>
+                                    <td>{{ res.experience_gap }}</td>
+                                    <td>{{ res.fraud_status }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p>No resumes have been screened yet. Upload resumes to get started.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Scroll-to-Top Button -->
+    <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="btn btn-primary rounded-circle" style="position: fixed; bottom: 20px; right: 20px; padding: 10px;">
+        ↑
+    </button>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showResumeUpload() {
+            document.getElementById("resume-section").style.display = "block";
+        }
+
+        function showLoading() {
+            document.getElementById("loading").classList.remove("d-none");
+        }
+
+        function hideLoading() {
+            document.getElementById("loading").classList.add("d-none");
+        }
+
+        function filterTable() {
+            const filterValue = document.getElementById("filter").value.toLowerCase();
+            const rows = document.querySelectorAll("table tr");
+
+            // Find the index of the "Suitable" column
+            const headerRow = rows[0];
+            const headers = headerRow.querySelectorAll("th");
+            let suitabilityIndex = -1;
+            headers.forEach((header, index) => {
+                if (header.textContent.trim().toLowerCase() === "suitable") {
+                    suitabilityIndex = index;
+                }
+            });
+
+            if (suitabilityIndex === -1) return; // Column not found
+
+            rows.forEach((row, index) => {
+                if (index === 0) return; // Skip header row
+                const suitability = row.cells[suitabilityIndex].textContent.toLowerCase();
+                row.style.display = (filterValue === "all" || suitability === filterValue) ? "" : "none";
+            });
+        }
+
+        function downloadReport() {
+            window.location.href = "/download-report";
+        }
+
+        function clearResumes() {
+            if (confirm("Are you sure you want to clear all resumes? This action cannot be undone.")) {
+                fetch("/clear-resumes").then(() => window.location.reload());
+            }
+        }
+
+        function analyzeSentiment() {
+            window.location.href = "/analyze-sentiment";
+        }
+
+        document.querySelector("form").addEventListener("submit", function () {
+            showLoading();
+        });
+
+        window.addEventListener("load", function () {
+            hideLoading();
+        });
+
+        document.querySelector("input[type='file']").addEventListener("change", function (e) {
+            const files = e.target.files;
+            for (const file of files) {
+                if (!file.name.endsWith(".pdf")) {
+                    alert("Only PDF files are allowed.");
+                    e.target.value = ""; // Clear the file input
+                    return;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
