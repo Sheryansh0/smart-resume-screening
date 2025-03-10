@@ -7,7 +7,7 @@ class Config:
     SMTP_SERVER = "smtp.gmail.com"
     SMTP_PORT = 587
     EMAIL_ADDRESS = "naninalli02@gmail.com"
-    EMAIL_PASSWORD = "yjmlyaycgytaewdh"
+    EMAIL_PASSWORD = "hqmqkkxslhuckhwf"
 
 # Ensure 'uploads' folder exists
 os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
